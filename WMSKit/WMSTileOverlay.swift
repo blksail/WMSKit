@@ -74,8 +74,8 @@ public class WMSTileOverlay : MKTileOverlay {
     func yOfRow(row: Int, zoom: Int) -> Double {
         let y = Double(row)
         let z = Double(zoom)
-        let n = M_PI - 2.0 * M_PI * y / pow(2.0, z)
-        return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)))
+        let n = Double.pi - 2.0 * Double.pi * y / pow(2.0, z)
+        return 180.0 / Double.pi * atan(0.5 * (exp(n) - exp(-n)))
     }
 
 
@@ -84,7 +84,7 @@ public class WMSTileOverlay : MKTileOverlay {
     }
 
     func mercatorYofLatitude(lat: Double) -> Double {
-        var y = log(tan((90 + lat) * M_PI / 360)) / (M_PI / 180)
+        var y = log(tan((90 + lat) * Double.pi / 360)) / (Double.pi / 180)
         y = y * 20037508.34 / 180
         return y
     }
@@ -112,7 +112,7 @@ public class WMSTileOverlay : MKTileOverlay {
     }
 
     func tileZ(zoomScale: MKZoomScale) -> Int {
-        let numTilesAt1_0 = MKMapSizeWorld.width / 256.0
+        let numTilesAt1_0 = MKMapSize.world.width / 256.0
         let zoomLevelAt1_0 = log2(Float(numTilesAt1_0))
         let zoomLevel = max(0, zoomLevelAt1_0 + floor(log2f(Float(zoomScale)) + 0.5))
         return Int(zoomLevel)
