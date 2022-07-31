@@ -19,6 +19,13 @@ extension String {
 }
 
 
+// from https://wiki.openstreetmap.org/wiki/Mercator#Swift
+extension FloatingPoint {
+    var degreesToRadians: Self { return self * .pi / 180 }
+    var radiansToDegrees: Self { return self * 180 / .pi }
+}
+
+
 /**
  WMSTileOverlay is a subclass of MKTileOverlay. It overrides the public functions
  `url(forTilePath path: path) -> URL` and
@@ -89,16 +96,56 @@ public class WMSTileOverlay : MKTileOverlay {
         return y
     }
 
+    // from https://wiki.openstreetmap.org/wiki/Mercator#Swift
+    private let radius: Double = 6378137.0
+
+    // from https://wiki.openstreetmap.org/wiki/Mercator#Swift
+    func lat2y(aLat: Double) -> Double {
+        log( tan( .pi / 4 + (aLat.degreesToRadians / 2))) * radius
+    }
+
+    // from https://wiki.openstreetmap.org/wiki/Mercator#Swift
+    func lon2x(aLon: Double) -> Double {
+        aLon.degreesToRadians * radius
+    }
+
+    // from https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Swift
+    func transformCoordinate(_ latitude: Double,_ longitude: Double,_ zoom: Int) -> (Int, Int) {
+        let tileX = Int(floor((longitude + 180) / 360.0 * pow(2.0, Double(zoom))))
+        let tileY = Int(floor((1 - log( tan( latitude * Double.pi / 180.0 ) + 1 / cos( latitude * Double.pi / 180.0 )) / Double.pi ) / 2 * pow(2.0, Double(zoom))))
+
+        return (tileX, tileY)
+    }
+
+    // from https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Swift
+    func tileToLatLon(_ x: Int,_ y: Int,_ zoom: Int) -> (Double, Double) {
+        let n: Double = pow(2.0, Double(zoom))
+        let lon: Double = (Double(x) / n) * 360.0 - 180.0
+        // let lat:Double = atan(sinh(Double(y) / n * Double.pi)) * 180.0 / Double.pi
+        let lat: Double = atan( sinh(.pi - (Double(y) / n) * 2 * .pi)) * 180.0 / .pi
+        return (lat, lon)
+    }
+
     public override func url(forTilePath path: MKTileOverlayPath) -> URL {
-        var left = xOfColumn(column: path.x, zoom: path.z)
-        var right = xOfColumn(column: path.x+1, zoom: path.z)
-        var bottom = yOfRow(row: path.y+1, zoom: path.z)
-        var top = yOfRow(row: path.y, zoom: path.z)
+        // var left = xOfColumn(column: path.x, zoom: path.z)
+        // var right = xOfColumn(column: path.x+1, zoom: path.z)
+        // var bottom = yOfRow(row: path.y+1, zoom: path.z)
+        // var top = yOfRow(row: path.y, zoom: path.z)
+        // if(useMercator){
+        //     left   = mercatorXofLongitude(lon: left) // minX
+        //     right  = mercatorXofLongitude(lon: right) // maxX
+        //     bottom = mercatorYofLatitude(lat: bottom) // minY
+        //     top    = mercatorYofLatitude(lat: top) // maxY
+        // }
+
+        var (left, top) = tileToLatLon(path.x, path.y, path.z)
+        var (right, bottom) = tileToLatLon(path.x+1, path.y+1, path.z)
+
         if(useMercator){
-            left   = mercatorXofLongitude(lon: left) // minX
-            right  = mercatorXofLongitude(lon: right) // maxX
-            bottom = mercatorYofLatitude(lat: bottom) // minY
-            top    = mercatorYofLatitude(lat: top) // maxY
+            left   = lon2x(aLon: left) // minX
+            right  = lon2x(aLon: right) // maxX
+            bottom = lat2y(aLat: bottom) // minY
+            top    = lat2y(aLat: top) // maxY
         }
 
         var resolvedUrl = "\(self.url)"
